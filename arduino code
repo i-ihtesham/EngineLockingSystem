@@ -1,0 +1,121 @@
+//mq3 Sensor for Alcohol Lvl Measurement
+//GPS to get location of vehicle
+//GSM to send alert
+
+//Pin 4(Rx) to be used with GPS(TX-TTL)
+//Pin 3(Tx) to be used with GSM(RX)
+
+#include &lt;SoftwareSerial.h&gt;
+#include &lt;TinyGPS.h&gt;
+#include &lt;LiquidCrystal.h&gt;
+LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+
+const int led1 = 13;
+const int led2 = 6;
+TinyGPS gps;
+SoftwareSerial ss(4, 3);
+static void smartdelay(unsigned long ms);
+void sendData();
+float flat = 11, flon = 22;
+
+int sensorPin = A1;
+
+int value;
+
+void setup() {
+
+pinMode(led1, OUTPUT);
+digitalWrite(led1, LOW);
+pinMode(led2, OUTPUT);
+digitalWrite(led2, LOW);
+Serial.begin(115200);
+ss.begin(9600);
+delay(2000);
+lcd.begin(16,2);
+ss.println(&quot;AT&quot;);
+delay(1000);
+}
+
+void loop() {
+
+txGps();
+int Value = analogRead(sensorPin);
+
+value = analogRead(A1);
+lcd.setCursor(0, 0);
+lcd.print(&quot;Alcohollevel:&quot;);
+
+lcd.println(value);
+
+Serial.println(value);
+
+if (Value &gt; 300)
+
+{
+
+digitalWrite(led1, HIGH);
+digitalWrite(led2, HIGH);
+lcd.setCursor(0, 2);
+lcd.print(&quot;Alert....!!!&quot;);
+
+Serial.print (&quot;Alert&quot;);
+sendSms();
+delay(2000);
+}
+
+else
+{
+
+digitalWrite(led1, LOW);
+digitalWrite(led2, LOW);
+
+lcd.setCursor(0, 2);
+
+lcd.print(&quot;Normal... :)&quot;);
+Serial.print(&quot;Normal&quot;);
+
+}
+
+}
+
+void txGps()
+{
+//float flat, flon;
+unsigned long age;
+smartdelay(2000);
+gps.f_get_position(&amp;flat, &amp;flon, &amp;age);
+}
+
+static void smartdelay(unsigned long ms)
+{
+unsigned long start = millis();
+do
+{
+
+while (ss.available())
+gps.encode(ss.read());
+} while (millis() - start &lt; ms);
+}
+
+void sendSms()
+{
+const unsigned char x = 0x1a;
+ss.println(&quot;at+cmgf=1&quot;);
+delay(1500);
+ss.print(&quot;at+cmgs=&quot;);
+ss.write(&#39;&quot;&#39;);
+ss.print(&quot;+918861944656&quot;);
+ss.write(&#39;&quot;&#39;);
+ss.println(&quot;&quot;);
+delay(3000);
+ss.print(&quot;alcohol alert: &quot;);
+ss.println(&quot;vehicle stopped due to drink &amp; drive: &quot;);
+ss.println(&quot; detected @ &quot;);
+ss.print(flat, 6);
+ss.print(&quot;,&quot;);
+ss.println(flon, 6);
+delay(1500);
+ss.write(x);
+delay(2000);
+
+}
